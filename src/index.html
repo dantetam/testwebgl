@@ -63,10 +63,13 @@ var canvas;               // the canvas
 var math;                 // the math lib.
 var fast;                 // the fast math lib.
 
-var g_maxImages = 250;
+var g_maxImages = 100;
 var g_numImages = 100;
 var g_imageSize = 32;
 var g_targetFrameRate = 60 - 2;  // add some fudge so browser that runs at 58-59 can still run the test
+	
+var rows = 32;
+var cols = 32;
 
 function CreateApp() {
   var updatePositions = true;
@@ -113,30 +116,40 @@ function CreateApp() {
   var instances = [];
   var width = canvas.clientWidth - g_imageSize;
   var height = canvas.clientHeight - g_imageSize;
-  for (var ii = 0; ii < g_maxImages; ++ii) {
-    instances.push({
-      x: Math.random() * width,
-      y: Math.random() * height,
-      colorMult: new Float32Array([Math.random(), Math.random(), Math.random(), Math.random()]),
-      arrayIndex: Math.floor(Math.random() * arrays.length),
-      xVel: 1 * (Math.random() < 0.5 ? -60 : 60),
-      yVel: 1 * (Math.random() < 0.5 ? -60 : 60)
-    });
+
+	var worldTiles = []
+	for (var r = 0; r < rows; r++) {
+		var temp = [];
+		for (var c = 0; c < cols; c++) {
+			temp.push({
+				x: r * width,
+				y: c * height,
+				xSize: g_imageSize,
+				ySize: g_imageSize,
+				colorMult: new Float32Array([Math.random(), Math.random(), Math.random(), Math.random()]),
+				arrayIndex: Math.floor(Math.random() * arrays.length)
+			});
+		}
+		worldTiles.push(temp);
   }
 
   // Expand arrays from instances to geometry.
 
   // Step 1: Add an extra worldPosition and colorMult field to each geometry
   for (var ii = 0; ii < arrays.length; ++ii) {
-    var numElements = arrays[ii].position.numElements;
-    arrays[ii].worldPosition = new tdl.primitives.AttribBuffer(2, numElements);
-    arrays[ii].colorMult = new tdl.primitives.AttribBuffer(4, numElements);
+		for (var jj = 0; jj < arrays[0].length; ++jj) {
+			var numElements = arrays[ii][jj].position.numElements;
+			arrays[ii][jj].worldPosition = new tdl.primitives.AttribBuffer(2, numElements);
+			arrays[ii][jj].colorMult = new tdl.primitives.AttribBuffer(4, numElements);
+		}
   }
 
   // Step 2: convert instances to expanded geometry
   var arrayInstances = [];
   for (var ii = 0; ii < instances.length; ++ii) {
-    arrayInstances.push(arrays[instances[ii].arrayIndex]);
+		for (var jj = 0; jj < instances[0].length; ++jj) {
+    	arrayInstances.push(arrays[instances[ii][jj].arrayIndex]);
+		}
   }
   var expanded = tdl.primitives.concatLarge(arrayInstances);
 
@@ -147,15 +160,19 @@ function CreateApp() {
   }
 
   // Step 4: Copy in Colors
+	var counter = 0;
   for (var ii = 0; ii < instances.length; ++ii) {
-    var instance = instances[ii];
-    var info = expanded.instances[ii];
-    var index = info.arrayIndex;
-    instance.firstVertex = info.firstVertex;
-    instance.numVertices = info.numVertices;
-    instance.expandedArrayIndex = index;
-    var attribBuffer = expanded.arrays[index].colorMult;
-    attribBuffer.fillRange(instance.firstVertex, instance.numVertices, instance.colorMult);
+		for (var jj = 0; jj < instances[0].length; ++jj) {
+			var instance = instances[ii][jj];
+			var info = expanded.instances[counter];
+			var index = info.arrayIndex;
+			instance.firstVertex = info.firstVertex;
+			instance.numVertices = info.numVertices;
+			instance.expandedArrayIndex = counter;
+			var attribBuffer = expanded.arrays[counter].colorMult;
+			attribBuffer.fillRange(instance.firstVertex, instance.numVertices, instance.colorMult);
+			counter++;
+		}
   }
   for (var ii = 0; ii < models.length; ++ii) {
     var attribBuffer = expanded.arrays[ii].colorMult;
@@ -188,45 +205,47 @@ function CreateApp() {
 
     // --Update Instance Positions---------------------------------------
     if (updatePositions) {
-      var width = canvas.clientWidth - g_imageSize;
-      var height = canvas.clientHeight - g_imageSize;
       var advance = elapsedTime;
-      for (var ii = 0; ii < g_numImages; ++ii) {
-        var instance = instances[ii];
-        instance.x += advance * instance.xVel;
-        instance.y += advance * instance.yVel;
-        if (instance.x < 0) {
-          instance.x = 0;
-          instance.xVel = -instance.xVel;
-        } else if (instance.x > width) {
-          instance.x = width;
-          instance.xVel = -instance.xVel;
-        }
-        if (instance.y < 0) {
-          instance.y = 0;
-          instance.yVel = -instance.yVel;
-        } else if (instance.y > height) {
-          instance.y = height;
-          instance.yVel = -instance.yVel;
-        }
-        var index = instance.expandedArrayIndex;
-        var attribBuffer = expanded.arrays[index].worldPosition;
-        attribBuffer.fillRange(
-            instance.firstVertex,
-            instance.numVertices,
-            [instance.x, instance.y]);
-        //console.log(instance.x, instance.y);
+      for (var ii = 0; ii < instances.length; ++ii) {
+				for (var jj = 0; jj < instances[0].length; ++jj) {
+					var instance = instances[ii][jj];
+					var width = canvas.clientWidth - instance.xSize;
+					var height = canvas.clientHeight - instance.ySize;
+					/*instance.x += advance * instance.xVel;
+					instance.y += advance * instance.yVel;
+					if (instance.x < 0) {
+						instance.x = 0;
+						instance.xVel = -instance.xVel;
+					} else if (instance.x > width) {
+						instance.x = width;
+						instance.xVel = -instance.xVel;
+					}
+					if (instance.y < 0) {
+						instance.y = 0;
+						instance.yVel = -instance.yVel;
+					} else if (instance.y > height) {
+						instance.y = height;
+						instance.yVel = -instance.yVel;
+					}*/
+					var index = instance.expandedArrayIndex;
+					var attribBuffer = expanded.arrays[index].worldPosition;
+					attribBuffer.fillRange(
+							instance.firstVertex,
+							instance.numVertices,
+							[instance.x, instance.y]);
+					
+					//console.log(instance.x, instance.y);
+				}
       }
 
       var numImages = g_numImages;
-      var index = 0;
-      while (numImages > 0) {
+      for (var index = 0; index < expanded.arrays.length; index++) {
         var attribBuffer = expanded.arrays[index].worldPosition;
         var model = models[index];
         model.setBuffer('worldPosition', attribBuffer);
         var numImagesInModel = model.buffers.indices.numElements() / 2;
         numImages -= numImagesInModel;
-        ++index;
+        //++index;
       }
     }
   }
