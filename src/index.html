@@ -117,31 +117,31 @@ function CreateApp() {
   var width = canvas.clientWidth - g_imageSize;
   var height = canvas.clientHeight - g_imageSize;
 
-	var worldTiles = []
+	var instances = []
 	for (var r = 0; r < rows; r++) {
 		var temp = [];
 		for (var c = 0; c < cols; c++) {
 			temp.push({
-				x: r * width,
-				y: c * height,
+				x: r * g_imageSize,
+				y: c * g_imageSize,
 				xSize: g_imageSize,
 				ySize: g_imageSize,
 				colorMult: new Float32Array([Math.random(), Math.random(), Math.random(), Math.random()]),
 				arrayIndex: Math.floor(Math.random() * arrays.length)
 			});
 		}
-		worldTiles.push(temp);
+		instances.push(temp);
   }
 
   // Expand arrays from instances to geometry.
 
   // Step 1: Add an extra worldPosition and colorMult field to each geometry
   for (var ii = 0; ii < arrays.length; ++ii) {
-		for (var jj = 0; jj < arrays[0].length; ++jj) {
-			var numElements = arrays[ii][jj].position.numElements;
-			arrays[ii][jj].worldPosition = new tdl.primitives.AttribBuffer(2, numElements);
-			arrays[ii][jj].colorMult = new tdl.primitives.AttribBuffer(4, numElements);
-		}
+		//for (var jj = 0; jj < arrays[0].length; ++jj) {
+			var numElements = arrays[ii].position.numElements;
+			arrays[ii].worldPosition = new tdl.primitives.AttribBuffer(2, numElements);
+			arrays[ii].colorMult = new tdl.primitives.AttribBuffer(4, numElements);
+		//}
   }
 
   // Step 2: convert instances to expanded geometry
@@ -168,8 +168,8 @@ function CreateApp() {
 			var index = info.arrayIndex;
 			instance.firstVertex = info.firstVertex;
 			instance.numVertices = info.numVertices;
-			instance.expandedArrayIndex = counter;
-			var attribBuffer = expanded.arrays[counter].colorMult;
+			instance.expandedArrayIndex = index;
+			var attribBuffer = expanded.arrays[index].colorMult;
 			attribBuffer.fillRange(instance.firstVertex, instance.numVertices, instance.colorMult);
 			counter++;
 		}
